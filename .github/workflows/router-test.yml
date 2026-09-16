@@ -1,0 +1,11 @@
+name: router-test
+on:
+  workflow_dispatch: {}
+  push:
+    paths: ["router/**", "tests/**"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pytest tests/ -q
