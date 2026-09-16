@@ -20,12 +20,13 @@ def main():
         carbon = statistics.median(json.load(f).values())
     out = []
     for V in (0.1, 0.5, 1.0, 2.0, 5.0):
-        for slo in (120, 140, 180):
+        for slo in (100, 120, 140, 180):
             gs, ps, vs = [], [], []
             for s in range(10):
                 regs = [Region(n, carbon * m, rtt, jt[(4, 128)])
                         for (n, _c, rtt), m in zip(S.TOPO, (0.4, 1.0, 1.8))]
-                r = S.run_policy(lambda: LDPRouter(regs, slo, 40, V=V), wl, 3000 + s)
+                r = S.run_policy(lambda: LDPRouter(regs, slo, 40, V=V), wl,
+                                 3000 + s, slo_ttft=slo, slo_itl=40)
                 gs.append(r["gco2e"])
                 ps.append(r["p99_ttft"])
                 vs.append(r["viol_rate"])

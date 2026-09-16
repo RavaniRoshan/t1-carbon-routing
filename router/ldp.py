@@ -32,15 +32,18 @@ class LDPRouter:
         return ttft, itl
 
     def route(self, tokens_in, tokens_out):
-        feasible = []
+        scored = []
         for r in self.regions.values():
             ttft, itl = self.predict(r, tokens_in, tokens_out)
-            if ttft <= self.slo_ttft and itl <= self.slo_itl:
-                feasible.append(r)
-        pool = feasible or list(self.regions.values())  # all-infeasible: fall back, debt grows
-        # drift-plus-penalty: min over pool of V*carbon*energy + debt*violation_risk
-        best = min(pool, key=lambda r: self.V * r.carbon * r.j_per_token)
-        violated = best not in feasible
+            feasible = ttft <= self.slo_ttft and itl <= self.slo_itl
+            # drift-plus-penalty: V*carbon*energy + debt*violation_risk.
+            # V knob is real: high V tolerates debt (carbon-first), low V
+            # lets debt steer to feasible regions.
+            score = self.V * r.carbon * r.j_per_token + self.debt * (0.0 if feasible else 1.0)
+            scored.append((score, feasible, r))
+        scored.sort(key=lambda t: t[0])
+        _, feasible, best = scored[0]
+        violated = not feasible
         self.debt = max(0.0, self.debt + (1.0 if violated else -0.05))
         self.decisions.append((best.name, violated))
         return best.name, violated

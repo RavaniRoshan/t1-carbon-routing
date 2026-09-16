@@ -100,7 +100,9 @@ def build_regions(carbon, jt, scale=1.0):
     return regs
 
 
-def run_policy(make, wl, seed):
+def run_policy(make, wl, seed, slo_ttft=None, slo_itl=None):
+    slo_ttft = SLO_TTFT if slo_ttft is None else slo_ttft
+    slo_itl = SLO_ITL if slo_itl is None else slo_itl
     rng = random.Random(seed)
     idx = list(range(len(wl)))
     rng.shuffle(idx)
@@ -121,7 +123,7 @@ def run_policy(make, wl, seed):
         gco2 += jt * toks / 3.6e6 * ci / toks * 1000.0  # gCO2e per 1k tokens
         ttft = 40 + (r.rtt_ms if r else 50) + 0.05 * cin
         itl = 25.0 + 0.5 * (cin / 512.0)  # ground-truth latency model
-        viols += (ttft > SLO_TTFT) or (itl > SLO_ITL)  # measured, not self-reported
+        viols += (ttft > slo_ttft) or (itl > slo_itl)  # measured vs SAME slo
         ttfts.append(ttft)
     ttfts.sort()
     p99 = ttfts[int(0.99 * (len(ttfts) - 1))]
