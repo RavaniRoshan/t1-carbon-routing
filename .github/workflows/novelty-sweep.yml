@@ -8,8 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -s -m 30 "http://export.arxiv.org/api/query?search_query=all:%22carbon+aware%22+AND+all:routing&start=0&max_results=30&sortBy=submittedDate&sortOrder=descending" -o arxiv1.xml
-          curl -s -m 30 "http://export.arxiv.org/api/query?search_query=abs:LLM+AND+abs:carbon&start=0&max_results=30&sortBy=submittedDate&sortOrder=descending" -o arxiv2.xml
+          curl -s -m 30 "https://export.arxiv.org/api/query?search_query=all:%22carbon+aware%22+AND+all:routing&start=0&max_results=30&sortBy=submittedDate&sortOrder=descending" -o arxiv1.xml
+          curl -s -m 30 "https://export.arxiv.org/api/query?search_query=abs:LLM+AND+abs:carbon&start=0&max_results=30&sortBy=submittedDate&sortOrder=descending" -o arxiv2.xml
           ls -la arxiv1.xml arxiv2.xml
       - run: python3 -c "import re; [print(f, open(f,encoding='utf-8',errors='replace').read().count('<entry>')) for f in ['arxiv1.xml','arxiv2.xml']]"
       - uses: actions/upload-artifact@v4
