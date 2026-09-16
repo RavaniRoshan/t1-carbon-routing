@@ -177,9 +177,19 @@ def main():
             LDPRouter(build_regions(carbon, jt), SLO_TTFT, SLO_ITL)),
     }
     per = {k: [] for k in makers}
+    seed_rows = []
     for s in range(SEEDS):
         for k, mk in makers.items():
-            per[k].append(run_policy(mk, wl, 1000 + s))
+            r = run_policy(mk, wl, 1000 + s)
+            per[k].append(r)
+            seed_rows.append({"policy": k, "seed": 1000 + s,
+                             **{m: round(r[m], 6) for m in
+                                ("gco2e", "viol_rate", "p99_ttft", "overhead_ms")}})
+    with open("seed_results.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["policy", "seed", "gco2e", "viol_rate",
+                                         "p99_ttft", "overhead_ms"])
+        w.writeheader()
+        w.writerows(seed_rows)
     out = []
     for k, runs in per.items():
         for metric in ("gco2e", "viol_rate", "p99_ttft", "overhead_ms"):
@@ -187,9 +197,9 @@ def main():
             m = statistics.mean(v)
             se = statistics.stdev(v) / math.sqrt(len(v)) if len(v) > 1 else 0
             out.append({"policy": k, "metric": metric, "n": len(v),
-                        "mean": round(m, 4),
-                        "ci95_lo": round(m - 1.96 * se, 4),
-                        "ci95_hi": round(m + 1.96 * se, 4),
+                        "mean": round(m, 6),
+                        "ci95_lo": round(m - 1.96 * se, 6),
+                        "ci95_hi": round(m + 1.96 * se, 6),
                         "wilcoxon_vs_ldp": "" if k == "ldp" else wilcoxon_signed(
                             [r[metric] for r in per["ldp"]], v)})
     with open("results.csv", "w", newline="") as f:
