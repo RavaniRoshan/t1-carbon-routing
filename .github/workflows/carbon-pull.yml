@@ -1,0 +1,15 @@
+name: carbon-pull
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 */6 * * *"
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -s -m 30 "https://api.carbonintensity.org.uk/regional" -o carbon_sample.json
+      - run: python3 -c "import json; d=json.load(open('carbon_sample.json')); print('regions:', len(d['data'][0].get('regions', d['data'])) if isinstance(d.get('data'), list) else len(d.get('data',{})))"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: carbon-sample
+          path: carbon_sample.json
