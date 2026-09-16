@@ -17,12 +17,29 @@ import sys
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from router.ldp import LDPRouter, Region
-from router.baselines import RoundRobin, LeastLoaded, LatencyOnly, CarbonBlindSLO
+from router.ldp import LDPRouter, RegionState
+from router.baselines import CarbonBlindSLO, LatencyOnly, LeastRTT, RoundRobin
+from router.ldp import LDPRouter, RegionState
 
 DATA = os.path.join(os.path.dirname(__file__), "..", "data")
 SEEDS = 30
 REQS = 400  # per seed per policy (CPU-fast; scale-up noted)
+TARGET_RHO = 0.7  # offered load vs 3-region capacity (arrival auto-tuned)
+
+
+def tune_arrival(wl, lat, sample=2000, regions=3):
+    from router.ldp import SLOTS
+    svc = []
+    for cin_raw, cout_raw in wl[:sample]:
+        cin = max(8, min(cin_raw, 512))
+        cout = max(8, min(cout_raw, 64))
+        svc.append((lat["ttft_base_ms"] + lat["ttft_per_input_ms"] * cin
+                    + lat["itl_ms"] * cout) / 1000.0)
+    mean_svc = statistics.mean(svc)
+    lam = TARGET_RHO * regions * SLOTS / mean_svc
+    print(f"arrival auto-tune: mean_svc={mean_svc:.2f}s slots={SLOTS} "
+          f"-> lambda={lam:.3f} rps (rho={TARGET_RHO})", flush=True)
+    return lam
 
 # netem-only topology (G2 fired): shaped RTTs, EMULATED label, not Cloud Run claims.
 # Greenest region is FARTHEST on purpose: routing must trade carbon vs latency.
@@ -55,7 +72,7 @@ def load_workload():
         def _to(_s, _f):
             raise TimeoutError("workload budget exceeded")
         signal.signal(signal.SIGALRM, _to)
-        signal.alarm(240)  # hard budget: 4 min for both files
+        signal.alarm(int(os.environ.get("WORKLOAD_BUDGET", "240")))
         for u in urls:
             req = urllib.request.Request(u, headers={"User-Agent": "t1-eval/1.0"})
             with urllib.request.urlopen(req, timeout=60) as fh:
@@ -96,39 +113,50 @@ def load_workload():
 def build_regions(carbon, jt, scale=1.0):
     regs = []
     for (name, ci, rtt), mult in zip(TOPO, (0.4, 1.0, 1.8)):
-        regs.append(Region(name, carbon * mult, rtt, jt[(4, 128)] * scale))
+        regs.append(RegionState(name, carbon * mult, rtt, jt[(4, 128)] * scale))
     return regs
 
 
-def run_policy(make, wl, seed, slo_ttft=None, slo_itl=None):
+def load_lat():
+    with open(os.path.join(DATA, "latency_model.json")) as f:
+        return json.load(f)
+
+
+def run_policy(make, wl, seed, slo_ttft=None, slo_itl=None, lat=None,
+               arrival=None):
     slo_ttft = SLO_TTFT if slo_ttft is None else slo_ttft
     slo_itl = SLO_ITL if slo_itl is None else slo_itl
+    lat = load_lat() if lat is None else lat
+    arrival = tune_arrival(wl, lat) if arrival is None else arrival
     rng = random.Random(seed)
     idx = list(range(len(wl)))
     rng.shuffle(idx)
     reqs = [wl[i] for i in idx[:REQS]]
+    gaps = [rng.expovariate(arrival) for _ in reqs]
     pol = make()
-    gco2, viols, ttfts, overhead_ms = 0.0, 0, [], 0.0
-    t = 0.0
-    for cin, cout in reqs:
-        cin = max(8, min(cin, 512))
-        cout = max(8, min(cout, 64))
+    gco2, viols, ttfts, waits, overhead_ms = 0.0, 0, [], [], 0.0
+    now = 0.0
+    for (cin_raw, cout_raw), gap in zip(reqs, gaps):
+        now += gap * 1000.0
+        cin = max(8, min(cin_raw, 512))
+        cout = max(8, min(cout_raw, 64))
         s = time_perf()
-        name, viol = pol.route(cin, cout)
+        name, viol, wait = pol.route(pol.regions.values(), cin, cout, now, lat)
         overhead_ms += (time_perf() - s) * 1000
-        r = pol.regions.get(name) if isinstance(pol.regions, dict) else None
-        jt = r.j_per_token if r else 0.35
-        ci = r.carbon if r else 150.0
+        r = pol.regions.get(name)
+        jt = r.j_per_token
+        ci = r.carbon
         toks = cin + cout
         gco2 += jt * toks / 3.6e6 * ci / toks * 1000.0  # gCO2e per 1k tokens
-        ttft = 40 + (r.rtt_ms if r else 50) + 0.05 * cin
-        itl = 25.0 + 0.5 * (cin / 512.0)  # ground-truth latency model
-        viols += (ttft > slo_ttft) or (itl > slo_itl)  # measured vs SAME slo
+        ttft = r.rtt_ms + wait + lat["ttft_base_ms"] + lat["ttft_per_input_ms"] * cin
+        viols += (ttft > slo_ttft) or (lat["itl_ms"] > slo_itl)
         ttfts.append(ttft)
+        waits.append(wait)
     ttfts.sort()
     p99 = ttfts[int(0.99 * (len(ttfts) - 1))]
     return {"gco2e": gco2 / len(reqs), "viol_rate": viols / len(reqs),
-            "p99_ttft": p99, "overhead_ms": overhead_ms / len(reqs)}
+            "p99_ttft": p99, "avg_wait_ms": statistics.mean(waits),
+            "overhead_ms": overhead_ms / len(reqs)}
 
 
 def time_perf():
@@ -168,13 +196,11 @@ def main():
 
     makers = {
         "ldp": mk_ldp,
-        "round_robin": lambda: RoundRobin(
-            {r.name: r for r in build_regions(carbon, jt)}),
-        "least_loaded": lambda: LeastLoaded(build_regions(carbon, jt)),
-        "latency_only": lambda: LatencyOnly(
-            LDPRouter(build_regions(carbon, jt), SLO_TTFT, SLO_ITL)),
-        "carbon_blind_slo": lambda: CarbonBlindSLO(
-            LDPRouter(build_regions(carbon, jt), SLO_TTFT, SLO_ITL)),
+        "round_robin": lambda: RoundRobin(build_regions(carbon, jt)),  # noqa: E731
+        "least_rtt": lambda: LeastRTT(build_regions(carbon, jt)),  # noqa: E731
+        "latency_only": lambda: LatencyOnly(build_regions(carbon, jt)),  # noqa: E731
+        "carbon_blind_slo": lambda: CarbonBlindSLO(  # noqa: E731
+            build_regions(carbon, jt), SLO_TTFT, SLO_ITL),
     }
     per = {k: [] for k in makers}
     seed_rows = []
@@ -184,15 +210,16 @@ def main():
             per[k].append(r)
             seed_rows.append({"policy": k, "seed": 1000 + s,
                              **{m: round(r[m], 6) for m in
-                                ("gco2e", "viol_rate", "p99_ttft", "overhead_ms")}})
+                                ("gco2e", "viol_rate", "p99_ttft", "avg_wait_ms",
+                                 "overhead_ms")}})
     with open("seed_results.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["policy", "seed", "gco2e", "viol_rate",
-                                         "p99_ttft", "overhead_ms"])
+                                         "p99_ttft", "avg_wait_ms", "overhead_ms"])
         w.writeheader()
         w.writerows(seed_rows)
     out = []
     for k, runs in per.items():
-        for metric in ("gco2e", "viol_rate", "p99_ttft", "overhead_ms"):
+        for metric in ("gco2e", "viol_rate", "p99_ttft", "avg_wait_ms", "overhead_ms"):
             v = [r[metric] for r in runs]
             m = statistics.mean(v)
             se = statistics.stdev(v) / math.sqrt(len(v)) if len(v) > 1 else 0

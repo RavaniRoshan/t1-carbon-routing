@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sim as S
-from router.ldp import LDPRouter, Region
+from router.ldp import LDPRouter, RegionState
 
 
 def main():
@@ -23,7 +23,7 @@ def main():
         for slo in (100, 120, 140, 180):
             gs, ps, vs = [], [], []
             for s in range(10):
-                regs = [Region(n, carbon * m, rtt, jt[(4, 128)])
+                regs = [RegionState(n, carbon * m, rtt, jt[(4, 128)])
                         for (n, _c, rtt), m in zip(S.TOPO, (0.4, 1.0, 1.8))]
                 r = S.run_policy(lambda: LDPRouter(regs, slo, 40, V=V), wl,
                                  3000 + s, slo_ttft=slo, slo_itl=40)

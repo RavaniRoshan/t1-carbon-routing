@@ -1,0 +1,7 @@
+{
+ "ttft_base_ms": 2.0,
+ "ttft_per_input_ms": 0.005,
+ "itl_ms": 34.36,
+ "provenance": "Qwen2.5-0.5B fp16 T4 B=1 N=20/cell; streamer t_first 1-2ms discarded as put() artifact; TTFT=e2e_med-63*itl_med",
+ "source": "evidence/rq1/lat_v1/latency.csv"
+}

@@ -12,14 +12,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sim as S
-from router.ldp import LDPRouter, Region
+from router.ldp import LDPRouter, RegionState
 
 
 def noisy_regions(carbon, jt, rtt_scale, noise, rng):
     regs = []
     for (name, _ci, rtt), mult in zip(S.TOPO, (0.4, 1.0, 1.8)):
         noisy = carbon * mult * (1 + rng.uniform(-noise, noise))
-        regs.append(Region(name, noisy, rtt * rtt_scale, jt[(4, 128)]))
+        regs.append(RegionState(name, noisy, rtt * rtt_scale, jt[(4, 128)]))
     return regs
 
 
@@ -37,7 +37,7 @@ def main():
                 mk_ldp = lambda: LDPRouter(  # noqa: E731
                     noisy_regions(carbon, jt, rs, nz, rng), 140, 40, V=1.0)
                 mk_lat = lambda: S.LatencyOnly(  # noqa: E731
-                    LDPRouter(noisy_regions(carbon, jt, rs, nz, rng), 140, 40))
+                    noisy_regions(carbon, jt, rs, nz, rng))
                 rl = S.run_policy(mk_ldp, wl, 2000 + s)
                 ra = S.run_policy(mk_lat, wl, 2000 + s)
                 ldp_m.append(rl["gco2e"])
