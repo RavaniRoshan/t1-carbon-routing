@@ -50,18 +50,43 @@ def load_workload():
             f"{base}/AzureLLMInferenceTrace_code_1week.csv"]
     wl = []
     try:
+        import signal
+
+        def _to(_s, _f):
+            raise TimeoutError("workload budget exceeded")
+        signal.signal(signal.SIGALRM, _to)
+        signal.alarm(240)  # hard budget: 4 min for both files
         for u in urls:
-            raw = urllib.request.urlopen(u, timeout=120).read().decode().splitlines()
-            for r in csv.DictReader(raw):
-                try:
-                    wl.append((int(float(r["ContextTokens"])),
-                               int(float(r["GeneratedTokens"]))))
-                except (KeyError, ValueError):
-                    continue
+            req = urllib.request.Request(u, headers={"User-Agent": "t1-eval/1.0"})
+            with urllib.request.urlopen(req, timeout=60) as fh:
+                # stream + reservoir-sample during parse: never hold full file
+                import io
+                text = io.TextIOWrapper(fh, encoding="utf-8", errors="replace")
+                reader = csv.DictReader(text)
+                kept, seen = [], 0
+                rng = random.Random(7)
+                for r in reader:
+                    try:
+                        row = (int(float(r["ContextTokens"])),
+                               int(float(r["GeneratedTokens"])))
+                    except (KeyError, ValueError):
+                        continue
+                    seen += 1
+                    if len(kept) < 20000:
+                        kept.append(row)
+                    elif rng.random() < 20000 / seen:
+                        kept[rng.randrange(20000)] = row
+            wl += kept
+            print(f"sampled {len(kept)} rows from {u.rsplit('/', 1)[-1]}", flush=True)
+        signal.alarm(0)
         assert len(wl) > 1000, f"too few rows: {len(wl)}"
         print(f"workload: Azure trace 2024 conv+code {len(wl)} rows (CC-BY, HPCA25)")
         return wl
     except Exception as e:  # noqa: BLE001
+        try:
+            signal.alarm(0)
+        except Exception:  # noqa: BLE001
+            pass
         print(f"workload FALLBACK synthetic (Azure fetch failed: {e})")
         rng = random.Random(0)
         return [(int(rng.lognormvariate(6.0, 0.8)), int(rng.lognormvariate(4.0, 0.6)))
