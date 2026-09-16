@@ -1,0 +1,20 @@
+{
+ "North Scotland": 0,
+ "South Scotland": 1,
+ "North West England": 36,
+ "North East England": 16,
+ "Yorkshire": 97,
+ "North Wales & Merseyside": 44,
+ "South Wales": 314,
+ "West Midlands": 118,
+ "East Midlands": 187,
+ "East England": 82,
+ "South West England": 113,
+ "South England": 142,
+ "London": 111,
+ "South East England": 123,
+ "England": 110,
+ "Scotland": 0,
+ "Wales": 273,
+ "GB": 114
+}

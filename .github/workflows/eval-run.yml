@@ -1,0 +1,15 @@
+name: eval-run
+on:
+  workflow_dispatch: {}
+  push:
+    paths: ["eval/**", "router/**", "data/**"]
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 eval/sim.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: results.csv
