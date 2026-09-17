@@ -1,11 +1,11 @@
-#figure(
-  table(columns: 5, align: center,
-    table.header([Policy], [gCO2e/1k], [Viol], [p99 TTFT ms], [p vs LDP]),
-    [LDP (ours)], [0.007603 [0.007468, 0.007737]], [0.17%], [140.690202], [--],
-    [Round-robin], [0.012138 [0.012138, 0.012138]], [0.57%], [117.725958], [0.0],
-    [Least-RTT], [0.020514 [0.020514, 0.020514]], [95.07%], [15258.593228], [0.0],
-    [Latency-only], [0.016741 [0.016591, 0.016891]], [0.13%], [106.028924], [0.0],
-    [Carbon-blind SLO], [0.016741 [0.016591, 0.016891]], [0.13%], [106.028924], [0.0]
+#import "@preview/akatable:0.1.0": academic-table
+#academic-table([Headline results (Azure 40k).],
+  (
+    [LDP (ours)], [0.0076 [0.0075, 0.0077]], [0.17%], [140.7], [--],
+    [Round-robin], [0.0121 [0.0121, 0.0121]], [0.57%], [117.7], [0.0],
+    [Least-RTT], [0.0205 [0.0205, 0.0205]], [95.07%], [15258.6], [0.0],
+    [Latency-only], [0.0167 [0.0166, 0.0169]], [0.13%], [106.0], [0.0],
+    [C-blind SLO], [0.0167 [0.0166, 0.0169]], [0.13%], [106.0], [0.0]
   ),
-  caption: [Headline: gCO2e/1k tokens, violation rate, p99 TTFT (Azure 40k, N=30).],
-) <tab:rq2>
+  format: "ieee", header: ([Policy], [gCO2e/1k], [Viol], [p99 ms], [p],),
+  label: <tab:rq2>, columns: 5, align: center, inset: 4pt)

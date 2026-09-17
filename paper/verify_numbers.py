@@ -7,8 +7,10 @@ import sys
 P = "/home/shiva/research/paper/"
 EV = "/home/shiva/research/evidence/"
 main = open(P + "main.typ").read()
-for t in ["rq1_energy", "rq1_quant", "rq2_headline", "rq3_sens", "rq4_pareto"]:
+for t in ["rq1_energy", "rq1_quant", "rq2_headline", "rq3_sens", "rq4_slice"]:
     main += open(f"{P}tables/{t}.typ").read()
+for t in ["rq1_plot", "pareto_plot"]:
+    main += open(f"{P}figs/{t}.typ").read()
 
 fails = []
 
@@ -18,13 +20,13 @@ def need(substr, label):
         fails.append(f"missing citation text: {label} ({substr})")
 
 
-# headline numbers from evidence/eval/results.csv
+# headline numbers from evidence/eval/results.csv (compact 4dp table form)
 res = {(r["policy"], r["metric"]): r
        for r in csv.DictReader(open(EV + "eval/results.csv"))}
 for key in [("ldp", "gco2e"), ("round_robin", "gco2e"),
             ("latency_only", "gco2e")]:
-    need(res[key]["mean"], f"results.csv {key}")
-need("140.69", "ldp p99 (table: 140.690202)")
+    need(f'{float(res[key]["mean"]):.4f}', f"results.csv {key}")
+need("140.7", "ldp p99 (table)")
 need("95.07%", "least-rtt violations")
 # RQ1 numbers
 summ = list(csv.DictReader(open(EV + "rq1/summary.csv")))

@@ -1,15 +1,15 @@
-#figure(
-  table(columns: 6, align: center,
-    table.header([RTT x], [Noise], [LDP], [Lat-only], [Saving], [LDP viol]),
+#import "@preview/akatable:0.1.0": academic-table
+#academic-table([Savings vs latency-only under RTT scale and signal noise.],
+  (
     [0.5], [0.0], [0.0073], [0.0167], [56.5%], [0.13%],
     [0.5], [0.1], [0.0072], [0.0166], [56.9%], [0.13%],
-    [0.5], [0.25], [0.007], [0.0165], [57.5%], [0.13%],
+    [0.5], [0.25], [0.0070], [0.0165], [57.5%], [0.13%],
     [1.0], [0.0], [0.0075], [0.0169], [55.8%], [0.13%],
     [1.0], [0.1], [0.0073], [0.0168], [56.2%], [0.13%],
     [1.0], [0.25], [0.0072], [0.0166], [56.7%], [0.13%],
     [2.0], [0.0], [0.0144], [0.0171], [15.8%], [5.55%],
-    [2.0], [0.1], [0.0144], [0.017], [15.3%], [5.55%],
+    [2.0], [0.1], [0.0144], [0.0170], [15.3%], [5.55%],
     [2.0], [0.25], [0.0144], [0.0168], [14.5%], [5.55%]
   ),
-  caption: [RQ3: savings vs latency-only under RTT scale and carbon-signal noise.],
-) <tab:rq3>
+  format: "ieee", header: ([RTT], [Noise], [LDP], [Lat], [Save], [Viol],),
+  label: <tab:rq3>, columns: 6, align: center, inset: 4pt)
