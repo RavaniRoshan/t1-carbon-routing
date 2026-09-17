@@ -70,12 +70,16 @@ open(f"{P}/tables/rq3_sens.typ", "w").write(
     aka("tab:rq3", "Savings vs latency-only under RTT scale and signal noise.",
         ["RTT", "Noise", "LDP", "Lat", "Save", "Viol"], rows, 6))
 
-# ---- RQ4: SLO-140 slice table (full frontier moves to the plot) ----
-rows = [[r["V"], r["gco2e"], r["p99_ttft"], f'{float(r["viol_rate"]) * 100:.2f}%']
-        for r in csv.DictReader(open(f"{EV}/eval/pareto.csv"))
+# ---- RQ4: SLO-140 slice (single row: V is decision-invariant, enforced) ----
+r140 = [r for r in csv.DictReader(open(f"{EV}/eval/pareto.csv"))
         if r["slo_ttft"] == "140"]
+vals = {(r["gco2e"], r["p99_ttft"], r["viol_rate"]) for r in r140}
+assert len(vals) == 1, f"V-invariance broken, slice must show all rows: {vals}"
+g, p99, v = vals.pop()
+rows = [[f'{r140[0]["V"]}--{r140[-1]["V"]}', g, p99,
+         f'{float(v) * 100:.2f}%']]
 open(f"{P}/tables/rq4_slice.typ", "w").write(
-    aka("tab:rq4", "Frontier slice at SLO 140 ms (full frontier in Fig. 3).",
+    aka("tab:rq4", "Frontier slice at SLO 140 ms: identical for all V (see Fig. 3).",
         ["V", "gCO2e/1k", "p99 ms", "Viol"], rows, 4))
 
 # ---- Fig: RQ1 log2-spaced energy vs batch (linear axis, log-spaced positions) ----
