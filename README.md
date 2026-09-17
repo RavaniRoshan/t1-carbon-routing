@@ -1,6 +1,6 @@
 # Carbon-Aware, SLO-Constrained Routing of LLM Inference
 
-Queue-aware Lyapunov routing across geo-distributed regions: **0.00760 gCO2e/1k tokens at 0.17% SLO violations** on 40k Azure production requests — 37–63% less carbon than round-robin, latency-only, and least-RTT baselines.
+Queue-aware Lyapunov routing across geo-distributed regions: **0.00760 gCO2e/1k tokens at 0.17% SLO violations** on an Azure production workload (40k-request reservoir sample) — 37–63% less carbon than round-robin, latency-only, and least-RTT baselines.
 
 [![router-test](https://github.com/RavaniRoshan/t1-carbon-routing/actions/workflows/router-test.yml/badge.svg)](https://github.com/RavaniRoshan/t1-carbon-routing/actions/workflows/router-test.yml)
 [![eval-run](https://github.com/RavaniRoshan/t1-carbon-routing/actions/workflows/eval-run.yml/badge.svg)](https://github.com/RavaniRoshan/t1-carbon-routing/actions/workflows/eval-run.yml)
@@ -33,6 +33,7 @@ paper/gen_tables.py ── CSVs ──▶ tables/*.typ + figs/*.typ ──▶ ma
 - `router/` — queue-aware Lyapunov router (`ldp.py`: hard SLO feasibility filter, then `V·c·e + w` among feasible; min-regret fallback with debt accounting) plus baselines (`baselines.py`).
 - `eval/` — Azure-trace replay harness (`sim.py`), RTT/noise sensitivity (`sensitivity.py`), carbon–latency Pareto (`pareto.py`).
 - `data/` — measured inputs: per-token joules, latency model (ITL 34.36 ms), carbon snapshot.
+- `evidence/` — vendored primary datasets the paper cites (`rq1/`: NVML joules + summaries; `eval/`: headline, seeds, sensitivity, pareto CSVs).
 - `paper/` — Typst source (`charged-ieee` 0.1.4, `akatable`, `fletcher`, `cetz-plot`); tables/figures are generated, never hand-edited.
 - `tests/` — router unit tests (5/5 green in CI).
 
@@ -60,10 +61,10 @@ GPU sweeps live in the research workspace (`kaggle/` kernels, pushed via `kaggle
 
 | Claim | Source |
 |---|---|
-| 951% J/token spread, fp16 + quant | `data/j_per_token.csv`, `paper/tables/rq1_*.typ` |
-| 0.00760 gCO2e/1k, 0.17% viol | `eval/sim.py` → `results.csv`, `paper/tables/rq2_headline.typ` |
-| RTT/noise sensitivity | `eval/sensitivity.py`, `paper/tables/rq3_sens.typ` |
-| V-invariant Pareto frontier | `eval/pareto.py`, `paper/figs/pareto_plot.typ` |
+| 951% J/token spread, fp16 + quant | `evidence/rq1/summary.csv`, `evidence/rq1/summary_quant.csv` |
+| 0.00760 gCO2e/1k, 0.17% viol | `evidence/eval/results.csv` (+ per-seed `seed_results.csv`) |
+| RTT/noise sensitivity | `evidence/eval/sensitivity.csv` |
+| V-invariant Pareto frontier | `evidence/eval/pareto.csv` |
 
 > [!WARNING]
-> On T4 with emulated (bitsandbytes) kernels, int8 costs 3.0–3.5× fp16 energy per token and int4 costs 1.1–1.4× — quantization-enabled demand response must budget dequantization overhead on this hardware class. Native FP8 paths may differ.
+> On T4 with emulated (bitsandbytes) kernels, int8 costs 2.9–3.5× fp16 energy per token and int4 costs 1.1–1.4× — quantization-enabled demand response must budget dequantization overhead on this hardware class. Native FP8 paths may differ.

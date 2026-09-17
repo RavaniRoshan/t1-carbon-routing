@@ -1,5 +1,5 @@
 #import "@preview/akatable:0.1.0": academic-table
-#academic-table([Savings vs latency-only under RTT scale and signal noise.],
+#academic-table([Savings vs latency-only under RTT scale and noise (N=10/cell).],
   (
     [0.5], [0.0], [0.0073], [0.0167], [56.5%], [0.13%],
     [0.5], [0.1], [0.0072], [0.0166], [56.9%], [0.13%],

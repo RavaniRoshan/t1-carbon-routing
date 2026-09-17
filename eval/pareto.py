@@ -1,5 +1,5 @@
 """RQ4 Pareto (Actions CPU): V sweep x SLO sweep -> (carbon, p99 TTFT, viol).
-V{0.1,0.5,1,2,5} x SLO_TTFT{120,140,180}, N=10 seeds on Azure sample.
+V{0.1,0.5,1,2,5} x SLO_TTFT{100,120,140,180}, N=10 seeds on Azure sample.
 Outputs pareto.csv — the carbon/latency frontier. Topology EMULATED (G2).
 """
 import csv
@@ -9,6 +9,7 @@ import statistics
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sim as S
 from router.ldp import LDPRouter, RegionState
 

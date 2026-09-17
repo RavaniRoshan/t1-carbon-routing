@@ -4,8 +4,10 @@ import csv
 import math
 import os
 
-EV = "/home/shiva/research/evidence"
-P = "/home/shiva/research/paper"
+EV = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "evidence")
+P = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+               "paper")
 os.makedirs(f"{P}/tables", exist_ok=True)
 os.makedirs(f"{P}/figs", exist_ok=True)
 
@@ -55,9 +57,11 @@ dat = {(r["policy"], r["metric"]): r
 rows = []
 for p in ORDER:
     g, v, t = dat[(p, "gco2e")], dat[(p, "viol_rate")], dat[(p, "p99_ttft")]
+    w = dat[(p, "gco2e")]["wilcoxon_vs_ldp"]
+    # round(p,5)==0.0 implies p<5e-6, so "<0.001" is exact, never "0.0"
+    w = "--" if not w else ("\\<0.001" if float(w) == 0.0 else w)
     rows.append([NAME[p], f'{f4(g["mean"])} [{f4(g["ci95_lo"])}, {f4(g["ci95_hi"])}]',
-                 f'{float(v["mean"]) * 100:.2f}%', f'{float(t["mean"]):.1f}',
-                 (dat[(p, "gco2e")]["wilcoxon_vs_ldp"] or "--")])
+                 f'{float(v["mean"]) * 100:.2f}%', f'{float(t["mean"]):.1f}', w])
 open(f"{P}/tables/rq2_headline.typ", "w").write(
     aka("tab:rq2", "Headline results (Azure 40k).",
         ["Policy", "gCO2e/1k", "Viol", "p99 ms", "p"], rows, 5))
@@ -67,7 +71,7 @@ rows = [[r["rtt_scale"], r["carbon_noise"], f4(r["ldp_gco2e"]), f4(r["lat_gco2e"
          f'{float(r["saving"]) * 100:.1f}%', f'{float(r["ldp_viol"]) * 100:.2f}%']
         for r in csv.DictReader(open(f"{EV}/eval/sensitivity.csv"))]
 open(f"{P}/tables/rq3_sens.typ", "w").write(
-    aka("tab:rq3", "Savings vs latency-only under RTT scale and signal noise.",
+    aka("tab:rq3", "Savings vs latency-only under RTT scale and noise (N=10/cell).",
         ["RTT", "Noise", "LDP", "Lat", "Save", "Viol"], rows, 6))
 
 # ---- RQ4: SLO-140 slice (single row: V is decision-invariant, enforced) ----
@@ -79,7 +83,7 @@ g, p99, v = vals.pop()
 rows = [[f'{r140[0]["V"]}--{r140[-1]["V"]}', g, p99,
          f'{float(v) * 100:.2f}%']]
 open(f"{P}/tables/rq4_slice.typ", "w").write(
-    aka("tab:rq4", "Frontier slice at SLO 140 ms: identical for all V (see Fig. 3).",
+    aka("tab:rq4", "Frontier slice at SLO 140 ms: identical for all V (Fig. 3; N=10/cell).",
         ["V", "gCO2e/1k", "p99 ms", "Viol"], rows, 4))
 
 # ---- Fig: RQ1 log2-spaced energy vs batch (linear axis, log-spaced positions) ----

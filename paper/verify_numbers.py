@@ -1,11 +1,13 @@
 """Verify every number cited in main.typ traces to evidence CSVs.
 Fails loudly on mismatch or placeholder text."""
 import csv
+import os
 import re
 import sys
 
-P = "/home/shiva/research/paper/"
-EV = "/home/shiva/research/evidence/"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+P = os.path.join(ROOT, "paper") + os.sep
+EV = os.path.join(ROOT, "evidence") + os.sep
 main = open(P + "main.typ").read()
 for t in ["rq1_energy", "rq1_quant", "rq2_headline", "rq3_sens", "rq4_slice"]:
     main += open(f"{P}tables/{t}.typ").read()

@@ -3,7 +3,7 @@
 #show: ieee.with(
   title: [Carbon-Aware, SLO-Constrained Routing of LLM Inference Across Geo-Distributed Regions],
   authors: ((name: "Ravani Roshan", organization: [Independent Research]),),
-  abstract: [Geo-distributed LLM serving can cut operational carbon by routing requests to cleaner grids, but only if latency SLOs survive the detour and the carbon numbers rest on measured GPU energy rather than TDP estimates. We measure energy per token on real GPUs (NVML cumulative counters, N=30/cell), finding a 951% spread across batch and context that justifies energy-aware routing, and showing emulated int8/int4 quantization costs 1.1--3.5x more energy than fp16 on T4 hardware. Our queue-aware Lyapunov drift-plus-penalty router applies a hard SLO feasibility filter first and prices carbon against queue delay among feasible regions. Replaying 40000 Azure production requests against real UK grid carbon traces, the router records 0.00760 gCO2e per 1k tokens at 0.17% SLO violations: 37% less carbon than round-robin, 55% less than latency-only routing, and 63% less than least-RTT routing, which collapses to 95% violations under load. Savings persist at 57%/56%/15% under 0.5x/1x/2x RTT scaling and are robust to +-25% carbon-signal noise. All datasets, router code, and harnesses are open.],
+  abstract: [Geo-distributed LLM serving can cut operational carbon by routing requests to cleaner grids, but only if latency SLOs survive the detour and the carbon numbers rest on measured GPU energy rather than TDP estimates. We measure energy per token on real GPUs (NVML cumulative counters, N=30/cell), finding a 951% spread across batch and context that justifies energy-aware routing, and showing emulated int8/int4 quantization costs 1.1--3.5x more energy than fp16 on T4 hardware. Our queue-aware Lyapunov drift-plus-penalty router applies a hard SLO feasibility filter first and prices carbon against queue delay among feasible regions. Replaying an Azure production workload (40,000-request reservoir sample) against real UK grid carbon traces, the router records 0.00760 gCO2e per 1k tokens at 0.17% SLO violations: 37% less carbon than round-robin, 55% less than latency-only routing, and 63% less than least-RTT routing, which collapses to 95% violations under load. Savings persist at 57%/56%/15% under 0.5x/1x/2x RTT scaling and are robust to +-25% carbon-signal noise. All datasets, router code, and harnesses are open.],
   index-terms: ("LLM inference", "carbon-aware computing", "geo-distributed systems", "SLO", "Lyapunov optimization"),
   paper-size: "us-letter",
   bibliography: bibliography("refs.bib", style: "ieee"),
@@ -17,7 +17,7 @@ Large-language-model inference is shifting from a latency-and-cost problem to an
 
 Closest prior halves do not combine. Live marginal-emission GPU routing demonstrates the measurement path but disclaims SLO coverage @bernhard. SLO-constrained carbon routing exists across model tiers with estimated energy and no geo dimension @gar, and across serverless functions without LLM inference @slarouter. Thermal schedulers optimize single datacenters @etcinfer; keep-alive controllers optimize single regions @lacerl; planners simulate deployment alternatives without routing @infact. Our conjunction --- per-request carbon-aware routing of autoregressive inference across geo-distributed regions under a hard SLO gate with measured GPU energy --- was absent in our September 2026 sweep (@tab:rq2 and @sec:related).
 
-We make four contributions. (1) A measurement protocol and dataset: NVML cumulative-counter joules with 5 s-plus windows, N=30 per cell, median/IQR/95% CI, on 2xT4 GPUs, settling the contested quantization question on this hardware class. (2) A queue-aware Lyapunov router with a hard feasibility filter: it never knowingly violates an SLO and prices carbon against queue delay only among feasible regions. (3) An evaluation on 40000 Azure production requests with real grid carbon, N=30 seeds, 95% CIs, and paired Wilcoxon tests against five baselines, plus RTT/noise sensitivity and a carbon--latency Pareto. (4) Open artifacts: datasets, router, and harnesses.
+We make four contributions. (1) A measurement protocol and dataset: NVML cumulative-counter joules with 5 s-plus windows, N=30 per cell, median/IQR/95% CI, on 2xT4 GPUs, settling the contested quantization question on this hardware class. (2) A queue-aware Lyapunov router with a hard feasibility filter: it never knowingly violates an SLO and prices carbon against queue delay only among feasible regions. (3) An evaluation on an Azure production workload (40,000-request reservoir sample) with real grid carbon, N=30 seeds, 95% CIs, and paired Wilcoxon tests against five baselines, plus RTT/noise sensitivity and a carbon--latency Pareto. (4) Open artifacts: datasets, router, and harnesses.
 
 = Background
 == Serving metrics
@@ -74,11 +74,11 @@ Batch dominates: 1.39 J/tok at B=1/C=128 falls to 0.14 at B=16/C=128; context ad
 
 == Quantization costs energy here
 #include "tables/rq1_quant.typ"
-On T4 with emulated (bitsandbytes) kernels, int8 costs 3.0--3.5x fp16 per token and int4 costs 1.1--1.4x; end-to-end latency confirms it (int8 B=8: 8.8 s vs fp16 2.1 s). Quantization-enabled demand response @quantdr must therefore budget dequantization overhead on this hardware class; native FP8 paths may differ.
+On T4 with emulated (bitsandbytes) kernels, int8 costs 2.9--3.5x fp16 per token and int4 costs 1.1--1.4x; end-to-end latency confirms it (int8 B=8: 8.8 s vs fp16 2.1 s). Quantization-enabled demand response @quantdr must therefore budget dequantization overhead on this hardware class; native FP8 paths may differ.
 
 == RQ2: carbon down 37--63% at near-zero violations
 #include "tables/rq2_headline.typ"
-LDP records 0.00760 gCO2e/1k tokens at 0.17% violations: -37.4% vs round-robin (p=0.0), -54.6% vs latency-only (p=0.0, violations statistically tied at p=1.0), -62.9% vs least-RTT (p=0.0). Least-RTT is the cautionary tale: concentrating load on the nearest region explodes queues (p99 15.3 s, 95.07% violations). Routing overhead is ~1 us per request.
+LDP records 0.00760 gCO2e/1k tokens at 0.17% violations: -37.4% vs round-robin (p\<0.001), -54.6% vs latency-only (p\<0.001, violations statistically tied at p=1.0), -62.9% vs least-RTT (p\<0.001). Least-RTT is the cautionary tale: concentrating load on the nearest region explodes queues (p99 15.3 s, 95.07% violations). Routing overhead is about 5 µs per request.
 
 == RQ3: RTT dominates, noise does not
 #include "tables/rq3_sens.typ"
@@ -88,7 +88,7 @@ Halving RTT lifts savings to ~57%; doubling RTT cuts them to ~15% with violation
 #include "tables/rq4_slice.typ"
 #figure(
   include "figs/pareto_plot.typ",
-  caption: [Carbon--latency frontier: p99 TTFT lands just under each SLO (100/120/140/180 ms, left to right) while carbon falls.],
+  caption: [Carbon--latency frontier: p99 TTFT lands just under each SLO (100/120/140/180 ms, left to right) while carbon falls (N=10/cell).],
 ) <fig:pareto>
 Across SLOs 100--180 ms, p99 TTFT lands just under each threshold (99.6/117.6/137.0/176.3) at ~0.1% violations while carbon falls (@fig:pareto). We report honestly that $V in [0.1, 5]$ is decision-invariant under the hard filter at this load: the filter, not the knob, does the work --- consistent with hard-filtering beating soft weighting @slarouter and simple policies capturing most shifting gains.
 

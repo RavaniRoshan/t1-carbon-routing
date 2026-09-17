@@ -1,5 +1,5 @@
 #import "@preview/akatable:0.1.0": academic-table
-#academic-table([Frontier slice at SLO 140 ms: identical for all V (see Fig. 3).],
+#academic-table([Frontier slice at SLO 140 ms: identical for all V (Fig. 3; N=10/cell).],
   (
     [0.1--5.0], [0.0076], [137.0], [0.10%]
   ),

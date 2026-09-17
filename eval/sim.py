@@ -3,9 +3,8 @@ Inputs (data/): j_per_token.csv (Kaggle T4 measured, N=30/cell),
 carbon_snapshot.json (UK CI 18-region forecast), RTT table in config (netem-only,
 labelled EMULATED per G2). Workload: Azure LLM Inference Trace 2024 CSVs if
 fetchable, else Poisson fallback with identical token schema (documented).
-Policies: LDP + round-robin + least-loaded + latency-only + carbon-blind-SLO +
-soft-weighted (CASPER-style ablation). N=30 seeds; 95pct CIs; paired Wilcoxon
-LDP vs each baseline; Pareto (carbon vs p99 TTFT). Outputs results.csv.
+Policies: LDP + round-robin + least-RTT + latency-only + carbon-blind-SLO.
+N=30 seeds; 95pct CIs; paired Wilcoxon LDP vs each baseline. Outputs results.csv.
 """
 import csv
 import json
@@ -19,7 +18,6 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from router.ldp import LDPRouter, RegionState
 from router.baselines import CarbonBlindSLO, LatencyOnly, LeastRTT, RoundRobin
-from router.ldp import LDPRouter, RegionState
 
 DATA = os.path.join(os.path.dirname(__file__), "..", "data")
 SEEDS = 30
@@ -53,11 +51,6 @@ def load_jtable():
         for r in csv.DictReader(f):
             t[(int(r["batch"]), int(r["in_len"]))] = float(r["median"])
     return t
-
-
-def j_for(jt, bsz, cin):
-    key = (16 if bsz >= 16 else 4 if bsz >= 4 else 1, 512 if cin >= 512 else 128)
-    return jt[key]
 
 
 def load_workload():
